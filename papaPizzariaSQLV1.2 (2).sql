@@ -124,8 +124,6 @@ CREATE TABLE Itens_Pedido (
     FOREIGN KEY (acompanhamento_id_FK) REFERENCES Acompanhamentos(id_acompanhamento)
 );
 
-
-
 -- INSERTS
 
 -- CLIENTES
@@ -223,8 +221,6 @@ values (76, 1,2,1,1,curtime()),
 -- 3 - inserir endereço de entrega na tabela pedido, de acordo com o cliente. se possível concatenando
 -- endereço, número, bairro, cep
 
-
-
 DELIMITER $
 -- 1 - calculando subtotal da tabela Itens_pedido
 CREATE TRIGGER TGR_CALC_SUBTOTAL
@@ -300,18 +296,39 @@ END$
 
 DELIMITER ;
 
-DROP TRIGGER TGR_ADD_CLIENTE_PEDIDO;
-
-DELETE FROM ITENS_PEDIDO;
-DELETE FROM PEDIDOS;
-
 -- Views
 -- 1 - Relatório de pedidos
--- id pedido, hora do pedido, data do pedido, itens pedido, subtotal, desconto, total, forma entrega
+-- id pedido, hora do pedido, data do pedido, itens pedido, subtotal, desconto, 
+-- total, forma entrega
+CREATE VIEW Relatorio_Pedidos AS SELECT
+pedidos.id_pedido, pedidos.data_pedido,pedidos.hora_pedido, pizzas.nome_pizza AS NomePizza,
+itens_pedido.quantidade_pizza AS QuantidadePizza, 
+acompanhamentos.nome_acompanhamento AS NomeAcompanhamento,
+itens_pedido.quantidade_acompanhamento AS QuantidadeAcomp,
+itens_pedido.subtotal, pedidos.desconto, pedidos.valor_total, pedidos.tipo_entrega
+FROM pedidos, pizzas, itens_pedido, acompanhamentos
+WHERE pedidos.id_pedido = itens_pedido.pedido_id_FK 
+AND pizzas.id_pizza = itens_pedido.pizza_id_FK
+AND acompanhamentos.id_acompanhamento = itens_pedido.acompanhamento_id_FK;
+
+SELECT * FROM Relatorio_Pedidos;
 
 -- 2 - Pedidos por cliente
+CREATE VIEW Pedidos_P_Cliente AS SELECT
+pedidos.cliente_id_FK, pizzas.nome_pizza, itens_pedido.quantidade_pizza,
+acompanhamentos.nome_acompanhamento, itens_pedido.quantidade_acompanhamento,
+pedidos.tipo_entrega, pedidos.forma_pagamento,
+pedidos.endereco_entrega, pedidos.telefone_cliente, pedidos.status_pedido,
+pedidos.desconto, pedidos.valor_total
+FROM Pedidos, Itens_pedido, Pizzas, Acompanhamentos
+where pedidos.id_pedido = itens_pedido.pedido_id_FK
+AND pizzas.id_pizza = itens_pedido.pizza_id_FK
+AND acompanhamentos.id_acompanhamento = itens_pedido.acompanhamento_id_FK;
+
+SELECT * FROM Pedidos_P_Cliente;
 
 -- 3 - Pedidos mais feitos // Pizzas mais pedidas
+
 
 -- 4 - Clientes que mais pedem
 -- id, nome, telefone, pizza mais pedida
