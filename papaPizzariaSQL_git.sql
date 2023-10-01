@@ -2,7 +2,6 @@
 CREATE DATABASE PapaPizzaria;
 USE PapaPizzaria;
 
-drop database papapizzaria;
 
 CREATE TABLE Clientes (
 	id_cliente int AUTO_INCREMENT PRIMARY KEY,
@@ -80,7 +79,7 @@ CREATE TABLE Pizzas (
 
 CREATE TABLE Acompanhamentos (
 	id_acompanhamento INT AUTO_INCREMENT PRIMARY KEY,
-    nome_acompanhamento VARCHAR (15),
+    nome_acompanhamento VARCHAR(255),
     custo DECIMAL(10,2),
     valor_venda DECIMAL(10,2),
     quantidade_minima INT,
@@ -123,6 +122,29 @@ CREATE TABLE Itens_Pedido (
     FOREIGN KEY (pizza_id_FK) REFERENCES Pizzas(id_pizza),
     FOREIGN KEY (acompanhamento_id_FK) REFERENCES Acompanhamentos(id_acompanhamento)
 );
+
+CREATE TABLE Ingredientes_Pizza(
+	pizza_id int,
+    ingrediente_id int,
+    
+    FOREIGN KEY (pizza_id) REFERENCES PIZZAS(id_pizza),
+    FOREIGN KEY (ingrediente_id) REFERENCES INGREDIENTES(id_ingrediente)
+);
+
+CREATE TABLE Itens_Cardapio(
+	id_item INT AUTO_INCREMENT PRIMARY KEY,
+	id_pizza_fk int,
+    nome_pizza varchar(255), -- preenchido por trigger
+    ingredientes_pizza varchar(265), -- preenchido por trigger
+    valor_pizza decimal(10,2), -- preenchido por trigger
+    id_acomp_fk int, 
+    nome_acomp varchar(255), -- preenchido por trigger
+    valor_acomp decimal(10,2), -- preenchido por trigger
+    
+    FOREIGN KEY (id_pizza_fk) REFERENCES PIZZAS(id_pizza),
+    FOREIGN KEY (id_acomp_fk) REFERENCES ACOMPANHAMENTOS(id_acompanhamento)
+);
+
 
 -- INSERTS
 
@@ -175,6 +197,18 @@ VALUES ('Pizza Presunto e Queijo', '1,2,4,5,6,7,8', 'Pequena', '29.40', '46.99',
 ('Pizza Calabresa', '1,2,4,5,6,7,10', 'Média', '38.50', '71.50', '2023-08-12', '2023-08-15'),
 ('Pizza Atum', '1,2,4,5,6,7,9', 'Grande', '40', '84.60', '2023-08-11', '2023-08-14');
 
+-- INGREDIENTES PIZZA
+INSERT INTO IngredientesPizza (pizza_id, ingrediente_id)
+values (1,1),(1,2),(1,4),(1,5),(1,6),(1,7),(1,8), -- pizza 1 
+(2,1),(2,2),(2,4),(2,5),(2,6),(2,7),(2,10), -- pizza 2
+(3,1),(3,2),(3,4),(3,5),(3,6),(3,7),(3,9); -- pizza 3
+
+-- ITENS CARDÁPIO
+INSERT INTO itens_cardapio (id_pizza_fk, id_acomp_fk) 
+VALUES ('1', '2'),
+('2', '3'),
+('3', '4');
+
 -- ACOMPANHAMENTOS
 INSERT INTO acompanhamentos 
 (nome_acompanhamento, CUSTO, VALOR_VENDA, data_fabricacao, data_validade, descricao, fornecedor_id_FK, categoria_acompanhamento, quantidade_minima, quantidade_maxima, quantidade_atual) 
@@ -213,16 +247,10 @@ values (76, 1,2,1,1,curtime()),
 (83, 1,2,1,3,curtime());
 
 
--- TRIGGERS
--- 1- calcular valor total do pedido pelo subtotal, incluindo desconto:
--- aplicar o desconto no valor total, depois de incluir desconto, pegue o subtotal, aplique o desconto
--- e atualize o valor total do pedido
--- 2 - Atualizar estoque do acompanhamento 
--- 3 - inserir endereço de entrega na tabela pedido, de acordo com o cliente. se possível concatenando
--- endereço, número, bairro, cep
+-- ------------------------------- TRIGGERS -------------------------------
 
 DELIMITER $
--- 1 - calculando subtotal da tabela Itens_pedido
+-- 1 - Calculando subtotal da tabela Itens_pedido
 CREATE TRIGGER TGR_CALC_SUBTOTAL
 BEFORE INSERT ON itens_pedido
 FOR EACH ROW
@@ -231,7 +259,7 @@ BEGIN
     (SELECT valor_venda FROM Acompanhamentos WHERE id_acompanhamento = NEW.acompanhamento_id_FK) * NEW.quantidade_acompanhamento;
 END$
 
--- 2 - calculando valor total da tabela Pedidos
+-- 2 - Calculando valor total da tabela Pedidos
 CREATE TRIGGER TGR_CALC_VALOR_TOTAL
 AFTER INSERT ON itens_pedido
 FOR EACH ROW
@@ -272,7 +300,7 @@ BEGIN
     SET NEW.telefone_cliente = telefone_entrega;
 END$
 
--- 5 - atualizando estoque de Acompanhamentos
+-- 5 - Atualizando estoque de Acompanhamentos
 CREATE TRIGGER TGR_ATT_ESTOQUE_ACOMPANHAMENTO
 AFTER INSERT ON itens_pedido
 FOR EACH ROW
@@ -294,12 +322,38 @@ BEGIN
     UPDATE Pedidos SET valor_total = 0 WHERE id_pedido = OLD.pedido_id_FK;
 END$
 
+-- 7 - Preenchendo itens do cardápio
+CREATE TRIGGER TGR_ADD_ITEM
+BEFORE INSERT ON itens_cardapio
+FOR EACH ROW
+BEGIN
+	-- concatenando os ingredientes
+    DECLARE ingredientes_completos VARCHAR(265);
+    SET ingredientes_completos = (
+    SELECT GROUP_CONCAT(Ingredientes.nome_ingrediente SEPARATOR ', ')
+	FROM Ingredientes
+	JOIN Ingredientes_pizza ON Ingredientes_pizza.ingrediente_id = Ingredientes.id_ingrediente
+	WHERE Ingredientes_Pizza.pizza_id = NEW.id_pizza_fk);
+    
+    SET NEW.ingredientes_pizza = ingredientes_completos;
+    
+    -- preenchendo outros dados de pizza
+    SET NEW.nome_pizza = (SELECT nome_pizza FROM Pizzas WHERE id_pizza = NEW.id_pizza_FK);
+    SET NEW.valor_pizza = (SELECT valor_venda FROM Pizzas WHERE id_pizza = NEW.id_pizza_FK);
+    
+    -- preenchendo dados de acompanhamento
+    SET NEW.nome_acomp = (SELECT nome_acompanhamento FROM Acompanhamentos 
+    WHERE id_acompanhamento = NEW.id_acomp_fk);
+    SET NEW.valor_acomp = (SELECT valor_venda FROM ACOMPANHAMENTOS
+	WHERE id_acompanhamento = NEW.id_acomp_fk);
+    
+END$
+
 DELIMITER ;
 
--- Views
+
+-- ------------------------------- VIEWS -------------------------------
 -- 1 - Relatório de pedidos
--- id pedido, hora do pedido, data do pedido, itens pedido, subtotal, desconto, 
--- total, forma entrega
 CREATE VIEW Relatorio_Pedidos AS SELECT
 pedidos.id_pedido, pedidos.data_pedido,pedidos.hora_pedido, pizzas.nome_pizza AS NomePizza,
 itens_pedido.quantidade_pizza AS QuantidadePizza, 
@@ -334,7 +388,17 @@ SELECT * FROM Pedidos_P_Cliente;
 -- id, nome, telefone, pizza mais pedida
 
 -- 5 - cardápio
--- id produto, nome produto, ingredientes, valor, categoria
+-- id pizza, nome pizza, id acompanhamento, nome acompanhamento, ingredientes, valor, categoria
+CREATE VIEW Cardapio AS SELECT DISTINCT
+pizzas.id_pizza AS CodigoPizza, pizzas.nome_pizza AS NomePizza,
+pizzas.tamanho_pizza AS TamanhoPizza, pizzas.valor_venda AS ValorPizza,
+acompanhamentos.id_acompanhamento AS CodigoAcomp, 
+acompanhamentos.nome_acompanhamento as NomeAcomp,
+acompanhamentos.descricao AS DescricaoAcomp, acompanhamentos.valor_venda AS ValorAcomp,
+acompanhamentos.categoria_acompanhamento AS Categoria
+FROM Pizzas, Acompanhamentos;
+
+SELECT * FROM Cardapio;
 
 -- 6 - Acompanhamentos e fornecedores
 CREATE VIEW Fornecedor_Acompanhamentos AS SELECT 
@@ -346,10 +410,18 @@ FROM Acompanhamentos, Fornecedor
 WHERE Acompanhamentos.fornecedor_id_FK = Fornecedor.id_fornecedor;
 
 select * from Fornecedor_Acompanhamentos;
-drop view Fornecedor_Acompanhamentos;
+
+-- 8 - Ingredientes e fornecedores
+CREATE VIEW Fornecedor_Ingredientes AS SELECT 
+ingredientes.id_ingrediente AS ID_INGR,
+ingredientes.nome_ingrediente AS NOME_INGR,
+Fornecedor.cnpj_fornecedor AS CPNJ_FORN,
+Fornecedor.nome_fornecedor AS NOME_FORN
+FROM Ingredientes, Fornecedor
+WHERE Ingredientes.fornecedor_id_FK = Fornecedor.id_fornecedor;
+
+select * from Fornecedor_Acompanhamentos;
+
 
 -- 7 - filiais que tem mais pedidos
-
-
-
 
