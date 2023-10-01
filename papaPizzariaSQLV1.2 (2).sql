@@ -336,7 +336,17 @@ SELECT * FROM Pedidos_P_Cliente;
 -- 5 - cardápio
 -- id produto, nome produto, ingredientes, valor, categoria
 
--- 6 - produtos e fornecedores
+-- 6 - Acompanhamentos e fornecedores
+CREATE VIEW Fornecedor_Acompanhamentos AS SELECT 
+acompanhamentos.id_acompanhamento AS ID_ACOMP,
+acompanhamentos.nome_acompanhamento AS NOME_ACOMP,
+Fornecedor.cnpj_fornecedor AS CPNJ_FORN,
+Fornecedor.nome_fornecedor AS NOME_FORN
+FROM Acompanhamentos, Fornecedor
+WHERE Acompanhamentos.fornecedor_id_FK = Fornecedor.id_fornecedor;
+
+select * from Fornecedor_Acompanhamentos;
+drop view Fornecedor_Acompanhamentos;
 
 -- 7 - filiais que tem mais pedidos
 
