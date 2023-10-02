@@ -218,18 +218,18 @@ VALUES ('Refrigerante', '2.80', '7.30', '2023-08-11', '2023-11-11', 'Refrigerant
 ('Brownie trufado', '3.25', '9.50', '2023-08-11', '2023-09-11', 'Brownie prestígio', '1', 'Sobremesa', '4', '45', '32');
 
 -- PEDIDOS
-INSERT INTO pedidos (cliente_id_FK, tipo_entrega, status_pedido, forma_pagamento, desconto) 
+INSERT INTO pedidos (cliente_id_FK, tipo_entrega, status_pedido, forma_pagamento, desconto, filial_fk) 
 VALUES 
-('1', 'Delivery', 'Entregue', 'Débito', '4.00'),
-('2', 'Delivery', 'Confirmado', 'Crédito', '2.50'),
-('3', 'Estabelecimento', 'Entregue', 'Pix', '5.00'),
-('4', 'Retirada Cliente', 'Em preparo', 'Débito', '2.50'),
-('5', 'Estabelecimento', 'Cancelado', 'Dinheiro', '4.00'),
-('6', 'Retirada Cliente', 'Em preparo', 'Crédito', '2.50'),
-('2', 'Delivery', 'Em preparo', 'Pix', '5.50'),
-('3', 'Delivery', 'Confirmado', 'Débito', '4.50'),
-('2', 'Estabelecimento', 'Entregue', 'Dinheiro', '5.50'),
-('1', 'Estabelecimento', 'Confirmado', 'Pix', '0');
+('1', 'Delivery', 'Entregue', 'Débito', '4.00',1),
+('2', 'Delivery', 'Confirmado', 'Crédito', '2.50',2),
+('3', 'Estabelecimento', 'Entregue', 'Pix', '5.00',1),
+('4', 'Retirada Cliente', 'Em preparo', 'Débito', '2.50',2),
+('5', 'Estabelecimento', 'Cancelado', 'Dinheiro', '4.00',1),
+('6', 'Retirada Cliente', 'Em preparo', 'Crédito', '2.50',1),
+('2', 'Delivery', 'Em preparo', 'Pix', '5.50',2),
+('3', 'Delivery', 'Confirmado', 'Débito', '4.50',2),
+('2', 'Estabelecimento', 'Entregue', 'Dinheiro', '5.50',1),
+('1', 'Estabelecimento', 'Confirmado', 'Pix', '0',2);
 
 UPDATE Pedidos SET data_pedido = curdate();
 UPDATE Pedidos SET hora_pedido = curtime();
@@ -381,7 +381,6 @@ AND acompanhamentos.id_acompanhamento = itens_pedido.acompanhamento_id_FK;
 
 SELECT * FROM Pedidos_P_Cliente;
 
-
 -- 3 - Pizzas mais pedidas
 CREATE VIEW Pedidos_Recorrentes AS SELECT
 pizza_id_fk, COUNT(*) as quantidade_pedidos, 
@@ -389,15 +388,31 @@ pizzas.nome_pizza
 FROM itens_pedido, pizzas
 where itens_pedido.pizza_id_FK = pizzas.id_pizza
 group by pizza_id_fk
-order by quantidade_pedidos DESC;
+order by quantidade_pedidos DESC
+limit 2;
 
 
 -- 4 - Clientes que mais pedem
--- id, nome, telefone, pizza mais pedida
+CREATE VIEW Clientes_Recorrentes AS SELECT
+cliente_id_fk, COUNT(*) as quantidade_pedidos,
+clientes.nome_cliente, clientes.telefone_cliente
+FROM pedidos, clientes
+where pedidos.cliente_id_FK = clientes.id_cliente
+group by cliente_id_fk
+order by cliente_id_fk DESC
+limit 2;
+
+SELECT * FROM Clientes_Recorrentes;
 
 -- 5 - cardápio
 -- id pizza, nome pizza, id acompanhamento, nome acompanhamento, ingredientes, valor, categoria
+CREATE VIEW Cardapio AS SELECT
+id_pizza_fk AS CodigoPizza, nome_pizza AS NomePizza,
+ingredientes_pizza AS IngredientesPizza, valor_pizza AS ValorPizza,
+id_acomp_fk as CodigoAcomp, nome_acomp AS NomeAcomp, valor_acomp AS ValorAcomp
+FROM itens_cardapio;
 
+SELECT * FROM Cardapio;
 
 -- 6 - Acompanhamentos e fornecedores
 CREATE VIEW Fornecedor_Acompanhamentos AS SELECT 
@@ -423,7 +438,14 @@ select * from Fornecedor_Acompanhamentos;
 
 
 -- 7 - filiais que tem mais pedidos
+CREATE VIEW Filiais_Recorrentes AS SELECT
+filial_fk,count(*) AS quantidade_pedido, filiais.nome_filial
+FROM Pedidos, Filiais
+WHERE pedidos.filial_fk = filiais.id_filial
+group by filial_fk
+order by quantidade_pedido DESC
+LIMIT 1;
 
-
+SELECT * FROM Filiais_Recorrentes;
 
 
