@@ -381,7 +381,15 @@ AND acompanhamentos.id_acompanhamento = itens_pedido.acompanhamento_id_FK;
 
 SELECT * FROM Pedidos_P_Cliente;
 
--- 3 - Pedidos mais feitos // Pizzas mais pedidas
+
+-- 3 - Pizzas mais pedidas
+CREATE VIEW Pedidos_Recorrentes AS SELECT
+pizza_id_fk, COUNT(*) as quantidade_pedidos, 
+pizzas.nome_pizza
+FROM itens_pedido, pizzas
+where itens_pedido.pizza_id_FK = pizzas.id_pizza
+group by pizza_id_fk
+order by quantidade_pedidos DESC;
 
 
 -- 4 - Clientes que mais pedem
@@ -389,16 +397,7 @@ SELECT * FROM Pedidos_P_Cliente;
 
 -- 5 - cardápio
 -- id pizza, nome pizza, id acompanhamento, nome acompanhamento, ingredientes, valor, categoria
-CREATE VIEW Cardapio AS SELECT DISTINCT
-pizzas.id_pizza AS CodigoPizza, pizzas.nome_pizza AS NomePizza,
-pizzas.tamanho_pizza AS TamanhoPizza, pizzas.valor_venda AS ValorPizza,
-acompanhamentos.id_acompanhamento AS CodigoAcomp, 
-acompanhamentos.nome_acompanhamento as NomeAcomp,
-acompanhamentos.descricao AS DescricaoAcomp, acompanhamentos.valor_venda AS ValorAcomp,
-acompanhamentos.categoria_acompanhamento AS Categoria
-FROM Pizzas, Acompanhamentos;
 
-SELECT * FROM Cardapio;
 
 -- 6 - Acompanhamentos e fornecedores
 CREATE VIEW Fornecedor_Acompanhamentos AS SELECT 
@@ -424,4 +423,7 @@ select * from Fornecedor_Acompanhamentos;
 
 
 -- 7 - filiais que tem mais pedidos
+
+
+
 
